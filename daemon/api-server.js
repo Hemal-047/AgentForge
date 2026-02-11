@@ -9,7 +9,12 @@ const { createPurchaseAction } = require('./actions/buy-product');
 
 function startApiServer() {
   const app = express();
-  app.use(cors());
+  app.use(
+    cors({
+      origin: ['https://agentforge-prime.vercel.app'],
+      methods: ['POST', 'OPTIONS'],
+    }),
+  );
   app.use(express.json());
 
   app.post('/api/actions/order-food', async (_req, res) => {
