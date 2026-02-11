@@ -48,7 +48,7 @@ Mock APIs simulate real services. The on-chain budget check, Walrus logging, and
 
 ## Links
 
-- **Live Demo:** https://agentforge007.vercel.app
+- **Live Demo:** https://agentforge-prime.vercel.app
 - **Package on Sui Explorer:** https://suiexplorer.com/package/0xab49ca7690599376c4e0481b0f9e1808dd03278aa4c4dbabdf7eb08aa53ac269?network=testnet
 - **Package ID:** `0xab49ca7690599376c4e0481b0f9e1808dd03278aa4c4dbabdf7eb08aa53ac269`
 - **GitHub:** https://github.com/Hemal-047/AgentForge
