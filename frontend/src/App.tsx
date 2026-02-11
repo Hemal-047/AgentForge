@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { SuiClient } from '@mysten/sui/client'
+import { ConnectButton, useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit'
+import { Transaction } from '@mysten/sui/transactions'
 import './App.css'
-import { CONSTITUTION_ID, PACKAGE_ID, REGISTRY_ID, RPC_URL } from './config'
+import { CLOCK_ID, CONSTITUTION_ID, PACKAGE_ID, REGISTRY_ID } from './config'
 import { decodeBytes, formatMist, formatTimestamp } from './utils/format'
 
 type AnyEvent = {
@@ -32,9 +33,11 @@ type Registry = {
   total_actions?: string | number
 }
 
-const client = new SuiClient({ url: RPC_URL })
-
 function App() {
+  const client = useSuiClient()
+  const account = useCurrentAccount()
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction()
+
   const [constitution, setConstitution] = useState<Constitution | null>(null)
   const [registry, setRegistry] = useState<Registry | null>(null)
   const [heartbeats, setHeartbeats] = useState<AnyEvent[]>([])
@@ -44,68 +47,76 @@ function App() {
   const [activity, setActivity] = useState<AnyEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [txStatus, setTxStatus] = useState<string | null>(null)
+
+  const [killReason, setKillReason] = useState('Emergency shutdown')
+  const [fundAmount, setFundAmount] = useState('0.25')
+  const [withdrawAmount, setWithdrawAmount] = useState('0.1')
+  const [dailyLimit, setDailyLimit] = useState('1')
+  const [perActionLimit, setPerActionLimit] = useState('0.2')
 
   const explorerBase = 'https://suiexplorer.com'
+
+  const refresh = async () => {
+    try {
+      setError(null)
+      const fetchObject = async (id: string) => {
+        const res = await client.getObject({
+          id,
+          options: { showContent: true },
+        })
+        return (res.data?.content as { fields?: Record<string, unknown> })?.fields
+      }
+
+      const fetchEvents = async (eventType: string, limit = 15) => {
+        const res = await client.queryEvents({
+          query: { MoveEventType: eventType },
+          order: 'descending',
+          limit,
+        })
+        return res.data as AnyEvent[]
+      }
+
+      const [constitutionFields, registryFields, hb, act, spendOk, spendNo] =
+        await Promise.all([
+          fetchObject(CONSTITUTION_ID),
+          fetchObject(REGISTRY_ID),
+          fetchEvents(`${PACKAGE_ID}::constitution::HeartbeatLogged`, 12),
+          fetchEvents(`${PACKAGE_ID}::constitution::ActionReported`, 12),
+          fetchEvents(`${PACKAGE_ID}::constitution::SpendAuthorized`, 12),
+          fetchEvents(`${PACKAGE_ID}::constitution::SpendDenied`, 12),
+        ])
+
+      setConstitution(constitutionFields as Constitution)
+      setRegistry(registryFields as Registry)
+      setHeartbeats(hb)
+      setActions(act)
+      setSpendApproved(spendOk)
+      setSpendDenied(spendNo)
+
+      const combined = [...hb, ...act, ...spendOk, ...spendNo]
+        .map((item) => ({
+          ...item,
+          _timestamp:
+            Number(item.timestampMs) ||
+            Number((item.parsedJson?.timestamp as string) ?? 0),
+        }))
+        .sort((a, b) => b._timestamp - a._timestamp)
+        .slice(0, 20)
+      setActivity(combined)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to load on-chain data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
     let timer: number | undefined
 
-    const fetchObject = async (id: string) => {
-      const res = await client.getObject({
-        id,
-        options: { showContent: true },
-      })
-      return (res.data?.content as { fields?: Record<string, unknown> })?.fields
-    }
-
-    const fetchEvents = async (eventType: string, limit = 15) => {
-      const res = await client.queryEvents({
-        query: { MoveEventType: eventType },
-        order: 'descending',
-        limit,
-      })
-      return res.data as AnyEvent[]
-    }
-
-    const refresh = async () => {
-      try {
-        setError(null)
-        const [constitutionFields, registryFields, hb, act, spendOk, spendNo] =
-          await Promise.all([
-            fetchObject(CONSTITUTION_ID),
-            fetchObject(REGISTRY_ID),
-            fetchEvents(`${PACKAGE_ID}::constitution::HeartbeatLogged`, 12),
-            fetchEvents(`${PACKAGE_ID}::constitution::ActionReported`, 12),
-            fetchEvents(`${PACKAGE_ID}::constitution::SpendAuthorized`, 12),
-            fetchEvents(`${PACKAGE_ID}::constitution::SpendDenied`, 12),
-          ])
-
-        if (!mounted) return
-        setConstitution(constitutionFields as Constitution)
-        setRegistry(registryFields as Registry)
-        setHeartbeats(hb)
-        setActions(act)
-        setSpendApproved(spendOk)
-        setSpendDenied(spendNo)
-
-        const combined = [...hb, ...act, ...spendOk, ...spendNo]
-          .map((item) => ({
-            ...item,
-            _timestamp:
-              Number(item.timestampMs) ||
-              Number((item.parsedJson?.timestamp as string) ?? 0),
-          }))
-          .sort((a, b) => b._timestamp - a._timestamp)
-          .slice(0, 20)
-        setActivity(combined)
-      } catch (err) {
-        console.error(err)
-        if (mounted) setError('Failed to load on-chain data')
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
+    if (!mounted) return
 
     refresh()
     timer = window.setInterval(refresh, 15000)
@@ -122,40 +133,139 @@ function App() {
     [constitution?.description],
   )
 
+  const toMist = (value: string) => {
+    const num = Number(value)
+    if (!Number.isFinite(num) || num <= 0) return '0'
+    return Math.round(num * 1_000_000_000).toString()
+  }
+
+  const encodeBytes = (value: string) => {
+    const encoder = new TextEncoder()
+    return Array.from(encoder.encode(value))
+  }
+
+  const handleTx = async (buildTx: (tx: Transaction) => void) => {
+    if (!account) {
+      setTxStatus('Connect a wallet first.')
+      return
+    }
+    try {
+      setTxStatus('Submitting transaction…')
+      const tx = new Transaction()
+      buildTx(tx)
+      const result = await signAndExecute({
+        transaction: tx,
+      })
+      setTxStatus(`Success: ${result.digest}`)
+      await refresh()
+    } catch (err) {
+      console.error(err)
+      setTxStatus('Transaction failed. Check console.')
+    }
+  }
+
+  const onKill = () =>
+    handleTx((tx) => {
+      tx.moveCall({
+        target: `${PACKAGE_ID}::constitution::kill_agent`,
+        arguments: [
+          tx.object(CONSTITUTION_ID),
+          tx.pure.vector('u8', encodeBytes(killReason)),
+          tx.object(CLOCK_ID),
+        ],
+      })
+    })
+
+  const onRevive = () =>
+    handleTx((tx) => {
+      tx.moveCall({
+        target: `${PACKAGE_ID}::constitution::revive_agent`,
+        arguments: [tx.object(CONSTITUTION_ID), tx.object(CLOCK_ID)],
+      })
+    })
+
+  const onFund = () =>
+    handleTx((tx) => {
+      const amount = toMist(fundAmount)
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)])
+      tx.moveCall({
+        target: `${PACKAGE_ID}::constitution::fund_treasury`,
+        arguments: [
+          tx.object(CONSTITUTION_ID),
+          coin,
+          tx.object(CLOCK_ID),
+        ],
+      })
+    })
+
+  const onWithdraw = () =>
+    handleTx((tx) => {
+      const amount = toMist(withdrawAmount)
+      tx.moveCall({
+        target: `${PACKAGE_ID}::constitution::withdraw_treasury`,
+        arguments: [
+          tx.object(CONSTITUTION_ID),
+          tx.pure.u64(amount),
+          tx.object(CLOCK_ID),
+        ],
+      })
+    })
+
+  const onUpdateBudgets = () =>
+    handleTx((tx) => {
+      const daily = toMist(dailyLimit)
+      const perAction = toMist(perActionLimit)
+      tx.moveCall({
+        target: `${PACKAGE_ID}::constitution::update_daily_limit`,
+        arguments: [tx.object(CONSTITUTION_ID), tx.pure.u64(daily)],
+      })
+      tx.moveCall({
+        target: `${PACKAGE_ID}::constitution::update_action_limit`,
+        arguments: [tx.object(CONSTITUTION_ID), tx.pure.u64(perAction)],
+      })
+    })
+
   return (
     <div className="page">
       <header className="header">
         <div>
           <h1>AgentForge</h1>
           <p className="sub">Economically autonomous agents on Sui</p>
+          <p className="muted">
+            {account ? `Connected: ${account.address}` : 'Wallet not connected'}
+          </p>
         </div>
-        <div className="ids">
-          <a
-            href={`${explorerBase}/object/${CONSTITUTION_ID}?network=testnet`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Constitution
-          </a>
-          <a
-            href={`${explorerBase}/object/${REGISTRY_ID}?network=testnet`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Registry
-          </a>
-          <a
-            href={`${explorerBase}/package/${PACKAGE_ID}?network=testnet`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Package
-          </a>
+        <div className="header-actions">
+          <div className="ids">
+            <a
+              href={`${explorerBase}/object/${CONSTITUTION_ID}?network=testnet`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Constitution
+            </a>
+            <a
+              href={`${explorerBase}/object/${REGISTRY_ID}?network=testnet`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Registry
+            </a>
+            <a
+              href={`${explorerBase}/package/${PACKAGE_ID}?network=testnet`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Package
+            </a>
+          </div>
+          <ConnectButton />
         </div>
       </header>
 
       {error && <div className="banner error">{error}</div>}
       {loading && <div className="banner">Loading on-chain state…</div>}
+      {txStatus && <div className="banner">{txStatus}</div>}
 
       <section className="cards">
         <div className="card">
@@ -174,6 +284,19 @@ function App() {
               (constitution?.last_heartbeat as string) ?? '0',
             )}
           </p>
+          <div className="inline-actions">
+            <button onClick={onKill} disabled={!account}>
+              Kill switch
+            </button>
+            <button onClick={onRevive} disabled={!account}>
+              Revive
+            </button>
+          </div>
+          <input
+            value={killReason}
+            onChange={(event) => setKillReason(event.target.value)}
+            placeholder="Reason"
+          />
         </div>
         <div className="card">
           <h3>Treasury</h3>
@@ -184,6 +307,26 @@ function App() {
             Total spent:{' '}
             {formatMist(constitution?.total_spent_all_time ?? 0)} SUI
           </p>
+          <div className="inline-actions">
+            <input
+              value={fundAmount}
+              onChange={(event) => setFundAmount(event.target.value)}
+              placeholder="Fund amount (SUI)"
+            />
+            <button onClick={onFund} disabled={!account}>
+              Fund treasury
+            </button>
+          </div>
+          <div className="inline-actions">
+            <input
+              value={withdrawAmount}
+              onChange={(event) => setWithdrawAmount(event.target.value)}
+              placeholder="Withdraw amount (SUI)"
+            />
+            <button onClick={onWithdraw} disabled={!account}>
+              Withdraw
+            </button>
+          </div>
         </div>
         <div className="card">
           <h3>Budgets</h3>
@@ -193,6 +336,21 @@ function App() {
           <p className="muted">
             {formatMist(constitution?.per_action_limit ?? 0)} per action
           </p>
+          <div className="inline-actions">
+            <input
+              value={dailyLimit}
+              onChange={(event) => setDailyLimit(event.target.value)}
+              placeholder="Daily limit (SUI)"
+            />
+            <input
+              value={perActionLimit}
+              onChange={(event) => setPerActionLimit(event.target.value)}
+              placeholder="Per action (SUI)"
+            />
+            <button onClick={onUpdateBudgets} disabled={!account}>
+              Update limits
+            </button>
+          </div>
         </div>
         <div className="card">
           <h3>Registry</h3>

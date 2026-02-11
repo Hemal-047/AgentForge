@@ -24,6 +24,13 @@ body {
   margin-bottom: 24px;
 }
 
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
 .header h1 {
   margin: 0 0 4px 0;
   font-size: 32px;
@@ -154,6 +161,41 @@ body {
   color: #c3d3f5;
   font-size: 11px;
   margin-bottom: 6px;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+input {
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid rgba(86, 113, 156, 0.5);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #e8ecf7;
+  min-width: 160px;
+}
+
+button {
+  border-radius: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(84, 120, 178, 0.4);
+  background: rgba(44, 70, 112, 0.6);
+  color: #e8ecf7;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  border-color: rgba(122, 160, 220, 0.8);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (max-width: 720px) {
