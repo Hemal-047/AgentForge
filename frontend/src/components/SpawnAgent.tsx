@@ -54,13 +54,9 @@ export default function SpawnAgent() {
 
     try {
       const result = await signAndExecute({ transaction: tx })
-      const created = result.objectChanges?.find(
-        (change: any) =>
-          change.type === 'created' &&
-          change.objectType?.includes('AgentConstitution'),
+      setStatus(
+        `✅ Agent spawned! Tx: ${result.digest}. Check SuiScan for your new AgentConstitution object.`,
       )
-      const objectId = created?.objectId || 'unknown'
-      setStatus(`✅ Agent created! Constitution ID: ${objectId}`)
     } catch (e: any) {
       setStatus(`❌ ${e.message}`)
     }
