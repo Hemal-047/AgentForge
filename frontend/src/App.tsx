@@ -9,8 +9,9 @@ import ActionCatalog from './components/ActionCatalog'
 import Constitution from './components/Constitution'
 import WalletStatus from './components/WalletStatus'
 import KillSwitch from './components/KillSwitch'
+import SpawnAgent from './components/SpawnAgent'
 
-const tabs = ['Pulse', 'Actions', 'Capabilities', 'Constitution', 'Treasury']
+const tabs = ['Pulse', 'Actions', 'Capabilities', 'Constitution', 'Treasury', 'Spawn']
 
 export default function App() {
   const client = useSuiClient()
@@ -106,6 +107,7 @@ export default function App() {
         {tab === 'Capabilities' && <ActionCatalog />}
         {tab === 'Constitution' && <Constitution />}
         {tab === 'Treasury' && <WalletStatus />}
+        {tab === 'Spawn' && <SpawnAgent />}
       </main>
     </div>
   )

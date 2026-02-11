@@ -284,6 +284,19 @@ button:disabled {
   gap: 6px;
 }
 
+.form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #9fb1d0;
+}
+
 .status {
   padding: 6px 10px;
   border-radius: 999px;
