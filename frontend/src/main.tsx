@@ -1,18 +1,17 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { getFullnodeUrl } from '@mysten/sui/client'
-import { SuiClientProvider, WalletProvider } from '@mysten/dapp-kit'
+import { createNetworkConfig, SuiClientProvider, WalletProvider } from '@mysten/dapp-kit'
 import '@mysten/dapp-kit/dist/index.css'
 import './index.css'
 import App from './App'
 
-const networks = {
-  testnet: { url: getFullnodeUrl('testnet') },
-}
+const { networkConfig } = createNetworkConfig({
+  testnet: { network: 'testnet', url: 'https://fullnode.testnet.sui.io:443' },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SuiClientProvider networks={networks} defaultNetwork="testnet">
+    <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
       <WalletProvider autoConnect>
         <App />
       </WalletProvider>

@@ -376,7 +376,7 @@ function App() {
           <div className="table">
             {activity.length === 0 && <p className="muted">No events yet.</p>}
             {activity.map((event, index) => {
-              const parsed = event.parsedJson ?? {}
+              const parsed = (event.parsedJson ?? {}) as Record<string, any>
               const timestamp =
                 Number(event.timestampMs) || Number(parsed.timestamp ?? 0)
               return (
@@ -403,7 +403,7 @@ function App() {
                     {parsed.amount && (
                       <p>
                         <strong>Amount:</strong>{' '}
-                        {formatMist(parsed.amount as string)} SUI
+                        {formatMist(parsed.amount ?? 0)} SUI
                       </p>
                     )}
                     {parsed.reason && (
@@ -429,7 +429,7 @@ function App() {
           <div className="table compact">
             {heartbeats.length === 0 && <p className="muted">No heartbeats yet.</p>}
             {heartbeats.map((event, index) => {
-              const parsed = event.parsedJson ?? {}
+              const parsed = (event.parsedJson ?? {}) as Record<string, any>
               return (
                 <div className="row" key={`${event.id?.txDigest}-${index}`}>
                   <div className="cell">
@@ -459,7 +459,7 @@ function App() {
               <p className="muted">No approvals yet.</p>
             )}
             {spendApproved.map((event, index) => {
-              const parsed = event.parsedJson ?? {}
+              const parsed = (event.parsedJson ?? {}) as Record<string, any>
               return (
                 <div className="row" key={`${event.id?.txDigest}-${index}`}>
                   <div className="cell">
@@ -489,7 +489,7 @@ function App() {
               <p className="muted">No denials yet.</p>
             )}
             {spendDenied.map((event, index) => {
-              const parsed = event.parsedJson ?? {}
+              const parsed = (event.parsedJson ?? {}) as Record<string, any>
               return (
                 <div className="row" key={`${event.id?.txDigest}-${index}`}>
                   <div className="cell">
@@ -514,7 +514,7 @@ function App() {
               <p className="muted">No reported actions yet.</p>
             )}
             {actions.map((event, index) => {
-              const parsed = event.parsedJson ?? {}
+              const parsed = (event.parsedJson ?? {}) as Record<string, any>
               return (
                 <div className="row" key={`${event.id?.txDigest}-${index}`}>
                   <div className="cell">
