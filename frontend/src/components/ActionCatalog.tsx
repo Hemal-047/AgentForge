@@ -7,6 +7,7 @@ const CAPABILITIES = [
     trigger: 'Lunch time or calorie threshold',
     budget: '0.05 SUI',
     api: 'Mock DoorDash API',
+    action: 'order-food',
   },
   {
     name: 'Book Ride',
@@ -16,6 +17,7 @@ const CAPABILITIES = [
     trigger: 'Calendar commute event',
     budget: '0.08 SUI',
     api: 'Mock Uber API',
+    action: 'book-ride',
   },
   {
     name: 'Buy Product',
@@ -25,6 +27,7 @@ const CAPABILITIES = [
     trigger: 'Price alert matched',
     budget: '1.75 SUI',
     api: 'Mock shopping API',
+    action: 'buy-product',
   },
   {
     name: 'Pharmacy Refill',
@@ -34,6 +37,7 @@ const CAPABILITIES = [
     trigger: 'Prescription due date',
     budget: '0.06 SUI',
     api: 'Mock pharmacy API',
+    action: 'pharmacy-refill',
   },
   {
     name: 'DEX Swap',
@@ -61,6 +65,7 @@ const CAPABILITIES = [
     trigger: 'Scheduled interval',
     budget: 'Free (no spend)',
     api: 'Git CLI',
+    action: 'git-backup',
   },
   {
     name: 'Telegram Alert',
@@ -79,7 +84,38 @@ const statusColors: Record<string, string> = {
   disabled: 'status disabled',
 }
 
+import { useState } from 'react'
+import { API_BASE } from '../config'
+
 export default function ActionCatalog() {
+  const [status, setStatus] = useState<Record<string, string>>({})
+
+  const triggerAction = async (action: string) => {
+    setStatus((prev) => ({ ...prev, [action]: 'Running...' }))
+    try {
+      const res = await fetch(`${API_BASE}/api/actions/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed')
+
+      const verdict = data.denied ? 'DENIED' : 'APPROVED'
+      const digest = data.spendDigest || data.reportDigest || 'n/a'
+      const walrus = data.walrusBlobId ? data.walrusBlobId.slice(0, 16) : 'n/a'
+
+      setStatus((prev) => ({
+        ...prev,
+        [action]: `${verdict} • tx ${digest} • Walrus ${walrus}`,
+      }))
+    } catch (error: any) {
+      setStatus((prev) => ({
+        ...prev,
+        [action]: `Error: ${error.message}`,
+      }))
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -137,6 +173,16 @@ export default function ActionCatalog() {
               <p>💰 Budget: {cap.budget}</p>
               <p>🔗 API: {cap.api}</p>
             </div>
+            {cap.action && (
+              <div className="try-actions">
+                <button onClick={() => triggerAction(cap.action)}>
+                  Try It
+                </button>
+                {status[cap.action] && (
+                  <p className="muted">{status[cap.action]}</p>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

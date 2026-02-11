@@ -14,7 +14,7 @@ module.exports = {
   WALRUS_AGGREGATOR: 'https://aggregator.walrus-testnet.walrus.space',
 
   // Heartbeat interval (ms)
-  HEARTBEAT_INTERVAL: 30000, // 30 seconds (demo)
+  HEARTBEAT_INTERVAL: 60000, // 1 minute (demo)
 
   // Signal check interval (ms)
   SIGNAL_INTERVAL: 5 * 60 * 1000, // 5 minutes

@@ -7,6 +7,7 @@ const { checkServerHealth } = require('./signals/server-health');
 const { checkGasPrice } = require('./signals/gas-tracker');
 const { sendAlert } = require('./actions/send-alert');
 const { cleanupLogs } = require('./actions/system-cleanup');
+const { startApiServer } = require('./api-server');
 
 let heartbeatCount = 0;
 let actionCount = 0;
@@ -92,6 +93,8 @@ async function main() {
  ║ Registry: ${config.FORGE_REGISTRY_ID?.slice(0, 16)}...             ║
  ║ Interval: ${config.HEARTBEAT_INTERVAL / 60000} min               ║
  ╚═══════════════════════════════════════════╝ `);
+
+  startApiServer();
 
   // Initial heartbeat
   await runHeartbeat();

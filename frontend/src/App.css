@@ -277,6 +277,13 @@ button:disabled {
   color: #9fb1d0;
 }
 
+.try-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .status {
   padding: 6px 10px;
   border-radius: 999px;

@@ -10,4 +10,6 @@ export const CONSTITUTION_ID =
   '0x4aa7af3f28d200bd3c7e532e4f4fe3290a3a1a83a58a61d7b4a38cb99a33dc77'
 
 export const CLOCK_ID = '0x6'
-// force deploy
+
+export const API_BASE =
+  (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3002'

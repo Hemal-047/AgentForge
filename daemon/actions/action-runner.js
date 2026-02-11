@@ -20,6 +20,7 @@ async function runAction(action) {
     action: payload,
   });
 
+  let spendDigest = null;
   if (action.amountMist && action.amountMist > 0) {
     const spendResult = await authorizeSpend(
       action.amountMist,
@@ -28,15 +29,33 @@ async function runAction(action) {
       blobId,
     );
 
+    spendDigest =
+      spendResult?.digest ||
+      spendResult?.effects?.transactionDigest ||
+      spendResult?.transactionDigest ||
+      null;
+
     if (!spendResult) {
       console.log(`❌ Spend denied for ${action.type}`);
-      return { ok: false, denied: true };
+      return { ok: false, denied: true, walrusBlobId: blobId, spendDigest };
     }
   }
 
-  await reportAction(action.type, hash, blobId);
+  const reportResult = await reportAction(action.type, hash, blobId);
+  const reportDigest =
+    reportResult?.digest ||
+    reportResult?.effects?.transactionDigest ||
+    reportResult?.transactionDigest ||
+    null;
+
   console.log(`✅ Action reported: ${action.type}`);
-  return { ok: true };
+  return {
+    ok: true,
+    denied: false,
+    walrusBlobId: blobId,
+    spendDigest,
+    reportDigest,
+  };
 }
 
 module.exports = { runAction };

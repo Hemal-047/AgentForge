@@ -12,6 +12,8 @@
   "type": "commonjs",
   "dependencies": {
     "@mysten/sui": "^2.3.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "node-fetch": "^3.3.2"
   }
 }
