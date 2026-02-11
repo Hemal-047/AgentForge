@@ -11,4 +11,4 @@ export const CONSTITUTION_ID =
 
 export const CLOCK_ID = '0x6'
 
-export const API_BASE = 'http://13.60.226.231:3002'
+export const API_BASE = ''
