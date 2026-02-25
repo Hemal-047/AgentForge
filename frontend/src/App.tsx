@@ -61,7 +61,7 @@ export default function App() {
     <div className="page">
       <header className="header">
         <div>
-          <h1>AgentForge</h1>
+          <h1><img src="/agentforge-logo.png" alt="AgentForge" style={{width:"36px",height:"36px",borderRadius:"6px",verticalAlign:"middle",marginRight:"8px"}} />AgentForge</h1>
           <p className="sub">Economically autonomous agent on Sui</p>
         </div>
         <div className="header-actions">
